@@ -12,7 +12,7 @@ BEGIN {
 	use Exporter   ();
 	our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
-	$VERSION     = "1.00";
+	$VERSION     = sprintf("%d.%02d", 0.1 =~ /(\d+)\.(\d+)/);
 
 	@ISA         = qw(Exporter);
 	@EXPORT      = ( );     # e.g.: qw(&func1 &func2 &func4)
@@ -59,7 +59,7 @@ sub new {
 	$self->{_cookiefile} = exists( $args{cookie_jar} ) ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
 
 	$self->{_cookie_jar} = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 );
-	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura/0.1", cookie_jar => $self->{_cookie_jar} );
+	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura", cookie_jar => $self->{_cookie_jar} );
 
 	$self->{_logged_in}  = 0;
 
