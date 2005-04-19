@@ -129,7 +129,6 @@ sub put {
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 		$Edittime  = $f->value( 'wpEdittime'  ) if defined $f->find_input( 'wpEdittime' );
 	}
-
 	return 0 unless defined $EditToken;
 
 	my %post = (
@@ -166,10 +165,19 @@ sub delete {
 
 	return 0 if ( 200 != $res->code );
 
+	my $EditToken;
+	my @forms = HTML::Form->parse( $res );
+	for my $f ( @forms ) {
+		next if ( $f->attr( 'id' ) ne 'deleteconfirm' );
+
+		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
+	}
+	return 0 unless defined $EditToken;
+
 	(my $wpEditToken) = $res->content =~ /name='wpEditToken' value="([a-z0-9]{32})"/;
 	return 0 unless defined $wpEditToken;
 	print $wpEditToken;
-	my %post = (
+   	my %post = (
 		wpReason => $reason,
 		wpConfirm => 1, # Needed for REL1_4, no longer exists in REL1_5
 		wpConfirmB => 1,
@@ -207,6 +215,7 @@ sub upload {
 		Content_Type => 'multipart/form-data',
 		Content => [ %post ]
 	);
+	return 1 if ( 302 == $res );
 
 	my $SessionKey;
 	my @forms = HTML::Form->parse( $res );
@@ -215,6 +224,7 @@ sub upload {
 
 		$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
 	}
+	return 0 if ( ! defined( $SessionKey ) );
 
 	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
 		#(my $error = $1) =~ s/<[^>]*>//g; # TODO: Do something smart with this.
