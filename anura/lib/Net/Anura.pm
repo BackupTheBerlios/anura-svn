@@ -5,6 +5,7 @@ use warnings;
 use LWP::UserAgent;
 use HTTP::Cookies;
 use HTML::Form;
+use URI;
 
 BEGIN {
 	use Exporter   ();
@@ -24,16 +25,14 @@ BEGIN {
 our @EXPORT_OK;
 
 sub new {
-	my $proto = shift;
-	my $baseurl = shift;
+	my ( $proto, $wiki, %args ) = @_;
 	my $class = ref $proto || $proto;
 	my $self  = { };
 
-	my %args = @_;
-	$self->{_baseurl}    = $baseurl                 ? $baseurl          : undef;
+	$self->{_wiki}       = $wiki                    ? $wiki             : undef;
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura";
 
-	($self->{_host})     = $self->{_baseurl} =~ m#^https?://([^/]+).*#i;
+	$self->{_host}       = $uri = URI->new( $self->{_wiki} )->host;
 	$self->{_cookie_jar} = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 );
 	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura", cookie_jar => $self->{_cookie_jar} );
 	$self->{_headers}    = [ Host => $self->{_host} ];
@@ -46,7 +45,7 @@ sub new {
 
 #
 # Login and logout
-# 
+#
 
 sub login {
 	my $self = shift;
@@ -59,7 +58,7 @@ sub login {
 	($self->{_user}, $self->{_password}) = @_;
 
 	my $res = $self->{_ua}->post(
-		$self->{_baseurl} . "?title=Special:Userlogin&action=submitlogin",
+		$self->{_wiki} . "?title=Special:Userlogin&action=submitlogin",
 		$self->{_headers},
 		Content => [
 			wpName         => $self->{_user},
@@ -78,7 +77,7 @@ sub logout {
 	return 1 unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->post(
-		$self->{_baseurl} . "?title=Special:Userlogout",
+		$self->{_wiki} . "?title=Special:Userlogout",
 		$self->{_headers}
 	);
 
@@ -100,7 +99,7 @@ sub get {
 	return undef unless defined $page;
 
 	my $res = $self->{_ua}->get(
-		$self->{_baseurl} . "?title=$page&action=raw",
+		$self->{_wiki} . "?title=$page&action=raw",
 		$self->{_headers}
 	);
 
@@ -115,7 +114,7 @@ sub put {
 	my $minor = $args{minor};
 	my $watch = $args{watch};
 
-	my $link = $self->{_baseurl} . "/$page";
+	my $link = $self->{_wiki} . "/$page";
 	my $res = $self->{_ua}->get(
 		"$link?action=edit",
 		$self->{_headers}
@@ -162,10 +161,10 @@ sub delete {
 	return 0 unless defined $page;
 
 	my $res = $self->{_ua}->get(
-		$self->{_baseurl} . "?title=$page&action=delete",
+		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers}
 	);
-	
+
 	return 0 if ( 200 != $res->code );
 
 	(my $wpEditToken) = $res->content =~ /name='wpEditToken' value="([a-z0-9]{32})"/;
@@ -179,7 +178,7 @@ sub delete {
 	);
 
 	$res = $self->{_ua}->post(
-		$self->{_baseurl} . "?title=$page&action=delete",
+		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers},
 		Content => [ %post ]
 	);
@@ -202,12 +201,12 @@ sub upload {
 		wpUploadAffirm => 1
 		# Note: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
 	);
-	
+
 	my $res = $self->{_ua}->post(
-                $self->{_baseurl} . '/Special:Upload',
+		$self->{_wiki} . '/Special:Upload',
 		$self->{_headers},
 		Content_Type => 'multipart/form-data',
-                Content => [ %post ]
+		Content => [ %post ]
 	);
 
 	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
@@ -217,7 +216,7 @@ sub upload {
 		#(my $error = $1) =~ s/<[^>]*>//g;
 		(my $wpSessionKey) = $res->content =~ m#name='wpSessionKey' value="(\d+)"#g;
 		my $affirm = $self->{_ua}->post(
-			$self->{_baseurl} . '?title=Special:Upload&action=submit',
+			$self->{_wiki} . '?title=Special:Upload&action=submit',
 			$self->{_headers},
 			Content_Type => 'multipart/form-data',
 			Content => [
@@ -234,13 +233,13 @@ sub upload {
 }
 
 #
-# Functions to return values made in sub new
+# Accessors/Mutators
 #
 
 sub user {
 	my $self = shift;
 	if ( @_ ) {
-		$self->{_user}  = shift;
+		$self->{_user}      = shift;
 		$self->{_logged_in} = 0;
 	}
 	return $self->{_user};
@@ -255,13 +254,13 @@ sub password {
 	return $self->{_password};
 }
 
-sub baseurl {
+sub wiki {
 	my $self = shift;
 	if ( @_ ) {
-		$self->{_baseurl}   = shift;
+		$self->{_wiki}      = shift;
 		$self->{_logged_in} = 0;
 	}
-	return $self->{_baseurl};
+	return $self->{_wiki};
 }
 
 #
@@ -271,7 +270,7 @@ sub baseurl {
 sub _scancookies {
 	my ( $self, $host ) = @_;
 	my %cookie = ();
-	
+
 	$self->{_cookie_jar}->scan(
 		sub {
 			my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
