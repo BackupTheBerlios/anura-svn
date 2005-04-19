@@ -32,7 +32,7 @@ sub new {
 	$self->{_wiki}       = $wiki                    ? $wiki             : undef;
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura";
 
-	$self->{_host}       = $uri = URI->new( $self->{_wiki} )->host;
+	$self->{_host}       = my $uri = URI->new( $self->{_wiki} )->host;
 	$self->{_cookie_jar} = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 );
 	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura", cookie_jar => $self->{_cookie_jar} );
 	$self->{_headers}    = [ Host => $self->{_host} ];
@@ -220,7 +220,6 @@ sub upload {
 	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
 		#(my $error = $1) =~ s/<[^>]*>//g; # TODO: Do something smart with this.
 	} elsif ($res->content =~ m#<ul class='warning'>(.*?)(?=</ul>)#s) {
-		print "We got a warning\n";
 		#(my $error = $1) =~ s/<[^>]*>//g;
 		my $SessionKey;
 		my @forms = HTML::Form->parse( $res );
@@ -229,7 +228,7 @@ sub upload {
 
 			$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
 		}
-		return 0 if ( ! defined( $SessionKey ) );
+		return 0 unless defined $SessionKey;
 
 		my $affirm = $self->{_ua}->post(
 			$self->{_wiki} . '?title=Special:Upload&action=submit',
