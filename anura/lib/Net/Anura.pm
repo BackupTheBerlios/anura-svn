@@ -217,21 +217,20 @@ sub upload {
 	);
 	return 1 if ( 302 == $res );
 
-	my $SessionKey;
-	my @forms = HTML::Form->parse( $res );
-	for my $f ( @forms ) {
-		next if ( $f->attr( 'id' ) ne 'uploadwarning' );
-
-		$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
-	}
-	return 0 if ( ! defined( $SessionKey ) );
-
 	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
 		#(my $error = $1) =~ s/<[^>]*>//g; # TODO: Do something smart with this.
 	} elsif ($res->content =~ m#<ul class='warning'>(.*?)(?=</ul>)#s) {
 		print "We got a warning\n";
 		#(my $error = $1) =~ s/<[^>]*>//g;
-		(my $wpSessionKey) = $res->content =~ m#name='wpSessionKey' value="(\d+)"#g;
+		my $SessionKey;
+		my @forms = HTML::Form->parse( $res );
+		for my $f ( @forms ) {
+			next if ( $f->attr( 'id' ) ne 'uploadwarning' );
+
+			$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
+		}
+		return 0 if ( ! defined( $SessionKey ) );
+
 		my $affirm = $self->{_ua}->post(
 			$self->{_wiki} . '?title=Special:Upload&action=submit',
 			$self->{_headers},
@@ -241,7 +240,7 @@ sub upload {
 				wpUpload => 1,
 				wpUploadAffirm => 1,
 				wpIgnoreWarning => 1,
-				wpSessionKey => $wpSessionKey
+				wpSessionKey => $SessionKey
 			]
 		);
 	}
