@@ -114,16 +114,15 @@ sub put {
 	my $minor = $args{minor};
 	my $watch = $args{watch};
 
-	my $link = $self->{_wiki} . "/$page";
 	my $res = $self->{_ua}->get(
-		"$link?action=edit",
+		$self->{_wiki} . "/$page?action=edit",
 		$self->{_headers}
 	);
 
 	return 0 if ( 200 != $res->code );
 
-	my @forms = HTML::Form->parse( $res->content, "$link?action=edit" );
 	my ( $Edittime, $EditToken );
+	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
 		next if ( $f->attr( 'name' ) ne 'editform' );
 
@@ -134,7 +133,7 @@ sub put {
 	return 0 unless defined $EditToken;
 
 	my %post = (
-		#wpSave      => 1, # Not used in HEAD or REL1_4 -Ã¦var
+		#wpSave     => 1, # Not used in HEAD or REL1_4 -Ævar
 		wpTextbox1  => $contents,
 		wpSummary   => $summary,
 		wpEdittime  => $Edittime,
@@ -144,7 +143,7 @@ sub put {
 	$post{wpWatchthis} = 1 if $watch;
 
 	$res = $self->{_ua}->post(
-		"$link?action=submit",
+		$self->{_wiki} . "/$page?action=submit",
 		$self->{_headers},
 		Content => [ %post ]
 	);
@@ -208,6 +207,14 @@ sub upload {
 		Content_Type => 'multipart/form-data',
 		Content => [ %post ]
 	);
+
+	my $SessionKey;
+	my @forms = HTML::Form->parse( $res );
+	for my $f ( @forms ) {
+		next if ( $f->attr( 'id' ) ne 'uploadwarning' );
+
+		$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
+	}
 
 	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
 		#(my $error = $1) =~ s/<[^>]*>//g; # TODO: Do something smart with this.
