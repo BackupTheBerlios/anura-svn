@@ -132,17 +132,16 @@ sub put {
 	my ( $self, $page, $contents, $summary, %args ) = @_;
 	return 0 unless defined $page and defined $contents;
 
-	my $minor = $args{minor};
-	my $watch = $args{watch};
-
 	$self->login( ) unless $self->{_logged_in};
 	return 0        unless $self->{_logged_in};
+
+	my $minor = $args{minor};
+	my $watch = $args{watch};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "/$page?action=edit",
 		$self->{_headers}
 	);
-
 	return 0 if ( 200 != $res->code );
 
 	my ( $Edittime, $EditToken );
@@ -181,17 +180,19 @@ sub delete {
 	my ($self, $page, $reason) = @_;
 	return 0 unless defined $page;
 
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers}
 	);
-
 	return 0 if ( 200 != $res->code );
 
 	my $EditToken;
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
-		next if ( $f->attr( 'id' ) ne 'deleteconfirm' );
+		next unless $f->attr( 'id' ) eq 'deleteconfirm';
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 	}
 	return 0 unless defined $EditToken;
@@ -206,7 +207,6 @@ sub delete {
 			wpEditToken => $EditToken
 		]
 	);
-
 	return ( 302 == $res->code );
 }
 
