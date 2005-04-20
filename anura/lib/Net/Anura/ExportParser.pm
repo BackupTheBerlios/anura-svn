@@ -121,9 +121,9 @@ sub _parseMediawiki( $ ) {
 	while ( scalar( @$ref ) ) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
-		_parsePage( \%$res, $cnt ) if 'page' eq $tag;
+		_parsePage( \%res, $cnt ) if 'page' eq $tag;
 	}
-	return %res;
+	return \%res;
 }
 
 1;

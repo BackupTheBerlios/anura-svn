@@ -23,13 +23,13 @@ BEGIN {
 our @EXPORT_OK;
 
 sub new {
-	my ( $proto, $wiki, %args ) = @_;
+	my ( $proto, %args ) = @_;
 	my $class = ref $proto || $proto;
 	my $self  = { };
 
-	$self->{_wiki}       = $wiki;
+	$self->{_wiki}       = $args{wiki};
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
-	$self->{_user}       = $args{user};
+	$self->{_username}   = $args{username};
 	$self->{_password}   = $args{password};
 
 	$self->{_host}       = URI->new( $self->{_wiki} )->host;
@@ -50,7 +50,7 @@ sub login {
 	my $self = shift;
 	{
 		my ( $u, $p ) = @_;
-		$self->user( $u ) if defined $u;
+		$self->username( $u ) if defined $u;
 		$self->password( $p ) if defined $p;
 	}
 
@@ -64,7 +64,7 @@ sub login {
 		$self->{_wiki} . "?title=Special:Userlogin&action=submitlogin",
 		$self->{_headers},
 		Content => [
-			wpName         => $self->{_user},
+			wpName         => $self->{_username},
 			wpPassword     => $self->{_password},
 			wpRemember     => 1,
 			wpLoginAttempt => 1
@@ -115,8 +115,16 @@ sub get {
 		]
 	);
 
-	return undef unless $res->content_type eq 'text/xml';
-	return Net::Anura::ExportParser->parse( $res->content );
+	return undef unless $res->content_type eq 'text/xml' or $res->content_type eq 'application/xml';
+
+	my $page = Net::Anura::ExportParser::parse( $res->content );
+	my @pages;
+
+	foreach my $k ( keys %$page ) {
+		push @pages, Net::Anura::Page->new( $k, %{ $$page{$k} } );
+	}
+
+	return @pages;
 }
 
 ## TODO: Rewrite this to accept Net::Anura::Page objects
@@ -252,13 +260,13 @@ sub upload {
 ## Accessors/Mutators
 ##
 
-sub user {
+sub username {
 	my $self = shift;
 	if ( @_ ) {
-		$self->{_user}      = shift;
+		$self->{_username}  = shift;
 		$self->{_logged_in} = 0;
 	}
-	return $self->{_user};
+	return $self->{_username};
 }
 
 sub password {
@@ -283,25 +291,28 @@ sub wiki {
 ## Internal functions
 ##
 
-## TODO: this ought to check the names of the three cookies we find to ensure
-##       they all have the same prefix. Imagine a situation where there's
-##       multiple Wikis on one host, all with different cookies, but the same
-##       hostname...
 sub _scancookies {
 	my ( $self, $host ) = @_;
-	my %cookie = ();
+	my %cookie;
+	my %prefixes;
 
 	$self->{_cookie_jar}->scan(
 		sub {
-			my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
+#			my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
+			my ( undef,    $key, $val, undef, $domain, undef, undef,     undef,   $expires, undef,    undef ) = @_;
 			return if ( $expires <= time || $host ne $domain );
-			$cookie{$1} = $val if ( $key =~ /(Token|UserID|UserName)$/i );
+			if ( $key =~ /^(.*?)(Token|UserID|UserName)$/i ) {
+				$cookie{"$1$2"} = $val;
+				$prefixes{$2} = 1;
+			}
 		}
 	);
+
 	return
-		$cookie{'User'} eq $self->{_user} and
-		exists $cookie{'Token'}           and
-		exists $cookie{'UserID'}          and
+		1 == scalar( keys( @prefixes ) )          and
+		$cookie{'UserName'} eq $self->{_username} and
+		exists $cookie{'Token'}                   and
+		exists $cookie{'UserID'}                  and
 		exists $cookie{'UserName'};
 }
 
