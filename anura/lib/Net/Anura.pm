@@ -29,10 +29,12 @@ sub new {
 	my $class = ref $proto || $proto;
 	my $self  = { };
 
-	$self->{_wiki}       = $wiki                    ? $wiki             : undef;
-	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura";
+	$self->{_wiki}       = $wiki;
+	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
+	$self->{_user}       = $args{user};
+	$self->{_password}   = $args{password};
 
-	$self->{_host}       = my $uri = URI->new( $self->{_wiki} )->host;
+	$self->{_host}       = URI->new( $self->{_wiki} )->host;
 	$self->{_cookie_jar} = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 );
 	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura", cookie_jar => $self->{_cookie_jar} );
 	$self->{_headers}    = [ Host => $self->{_host} ];
@@ -49,13 +51,17 @@ sub new {
 
 sub login {
 	my $self = shift;
-	return 1 if $self->{_logged_in};
+	{
+		my ( $u, $p ) = @_;
+		$self->user $u if defined $u;
+		$self->password $p if defined $p;
+	}
 
+	return 1 if $self->{_logged_in};
 	if ( $self->_scancookies( $self->{_host} ) ) {
 		$self->{_logged_in} = 1;
 		return 1;
 	}
-	($self->{_user}, $self->{_password}) = @_;
 
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . "?title=Special:Userlogin&action=submitlogin",
@@ -69,7 +75,7 @@ sub login {
 	);
 
 	$self->{_logged_in} = ( 302 == $res->code );
-	return $self;
+	return $self->{_logged_in};
 }
 
 sub logout {
@@ -95,16 +101,19 @@ sub logout {
 
 # TODO: Rewrite this to use Special:Export
 sub get {
-	my ( $self, $page ) = @_;
-	return undef unless defined $page;
+	my ( $self, @reqs ) = @_;
+	my %results = ();
 
-	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "?title=$page&action=raw",
-		$self->{_headers}
-	);
+	foreach my $page ( @reqs ) {
+		my $res = $self->{_ua}->get(
+			$self->{_wiki} . "?title=$page&action=raw",
+			$self->{_headers}
+		);
 
-	return $res->content if ( 200 == $res->code );
-	return undef;
+		%pages{$page} = $res->content if ( 200 == $res->code );
+	}
+
+	return %results;
 }
 
 sub put {
@@ -125,7 +134,6 @@ sub put {
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
 		next if ( $f->attr( 'name' ) ne 'editform' );
-
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 		$Edittime  = $f->value( 'wpEdittime'  ) if defined $f->find_input( 'wpEdittime' );
 	}
@@ -169,25 +177,19 @@ sub delete {
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
 		next if ( $f->attr( 'id' ) ne 'deleteconfirm' );
-
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 	}
 	return 0 unless defined $EditToken;
 
-	(my $wpEditToken) = $res->content =~ /name='wpEditToken' value="([a-z0-9]{32})"/;
-	return 0 unless defined $wpEditToken;
-	print $wpEditToken;
-   	my %post = (
-		wpReason => $reason,
-		wpConfirm => 1, # Needed for REL1_4, no longer exists in REL1_5
-		wpConfirmB => 1,
-		wpEditToken => $wpEditToken
-	);
-
 	$res = $self->{_ua}->post(
 		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers},
-		Content => [ %post ]
+		Content => [
+			wpReason => $reason,
+			wpConfirm => 1, # Needed for REL1_4, no longer exists in REL1_5
+			wpConfirmB => 1,
+			wpEditToken => $EditToken
+		]
 	);
 
 	return ( 302 == $res->code );
@@ -201,19 +203,16 @@ sub upload {
 	my ($self, $file, $summary) = @_;
 	return 0 unless defined $file;
 
-	my %post = (
-		wpUploadFile => [ $file ],
-		wpUploadDescription => $summary,
-		wpUpload => 1,
-		wpUploadAffirm => 1
-		# Note: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
-	);
-
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '/Special:Upload',
 		$self->{_headers},
-		Content_Type => 'multipart/form-data',
-		Content => [ %post ]
+		Content => [
+			wpUploadFile => [ $file ],
+			wpUploadDescription => $summary,
+			wpUpload => 1,
+			wpUploadAffirm => 1
+			# Note: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
+		]
 	);
 	return 1 if ( 302 == $res );
 
@@ -225,7 +224,6 @@ sub upload {
 		my @forms = HTML::Form->parse( $res );
 		for my $f ( @forms ) {
 			next if ( $f->attr( 'id' ) ne 'uploadwarning' );
-
 			$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
 		}
 		return 0 unless defined $SessionKey;
@@ -233,7 +231,6 @@ sub upload {
 		my $affirm = $self->{_ua}->post(
 			$self->{_wiki} . '?title=Special:Upload&action=submit',
 			$self->{_headers},
-			Content_Type => 'multipart/form-data',
 			Content => [
 				wpUploadDescription => $summary,
 				wpUpload => 1,
@@ -282,6 +279,10 @@ sub wiki {
 # Misc internal functions
 #
 
+## TODO: this ought to check the names of the three cookies we find to ensure
+##       they all have the same prefix. Imagine a situation where there's
+##       multiple Wikis on one host, all with different cookies, but the same
+##       hostname...
 sub _scancookies {
 	my ( $self, $host ) = @_;
 	my %cookie = ();
@@ -293,11 +294,11 @@ sub _scancookies {
 			$cookie{$1} = $val if ( $key =~ /(Token|UserID|UserName)$/i );
 		}
 	);
-	return 1 if $cookie{'User'} eq $self->{_user}
-		and exists $cookie{'Token'}
-		and exists $cookie{'UserID'}
-		and exists $cookie{'UserName'};
-	return 0;
+	return
+		$cookie{'User'} eq $self->{_user} and
+		exists $cookie{'Token'}           and
+		exists $cookie{'UserID'}          and
+		exists $cookie{'UserName'};
 }
 
 1;
