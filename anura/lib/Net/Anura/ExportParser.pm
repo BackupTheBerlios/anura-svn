@@ -4,41 +4,55 @@ use strict;
 use warnings;
 use XML::Parser;
 
+use Net::Anura::Page;
+
 BEGIN {
-	use Exporter   ();
+	use Exporter ();
 	our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
 	$VERSION     = sprintf("%d.%02d", 0.1 =~ /(\d+)\.(\d+)/);
-
 	@ISA         = qw(Exporter);
-	@EXPORT      = qw(&process);
-	%EXPORT_TAGS = ();     # e.g.: TAG => [ qw!name1 name2! ],
-
-	# your exported package globals go here,
-	# as well as any optionally exported functions
-	@EXPORT_OK   = ();     # e.g.: qw($Var1 %Hashit &func3)
+	@EXPORT      = ();
+	@EXPORT_OK   = ();
+	%EXPORT_TAGS = ();
 }
-
 our @EXPORT_OK;
 
-sub emit($$) {
-	my $name = shift;
-	my $ref = shift;
+sub parse( $ ) {
+	my $p    = XML::Parser->new( Style => 'Tree' );
+	my $tree = $p->parse( shift );
+	while ( scalar( @$tree ) ) {
+		my $tag = shift @$tree;
+		my $cnt = shift @$tree;
 
-	print "$name = " . ref( $ref ) . " [\n";
-	my $q = 0;
-	foreach my $a ( @$ref ) {
-		if ( '' eq ref( $a ) ) {
-			print "$q\t'$a'\n";
-		} else {
-			print "$q\t=> ".ref($a)."\n";
-		}
-		$q++;
+		return _parseMediawiki( $cnt ) if $tag eq 'mediawiki';
 	}
-	print "]\n";
+	return undef;
 }
 
-sub processText($) {
+# keep for debugging
+#sub _emit( $$ ) {
+#	my $name = shift;
+#	my $ref = shift;
+#
+#	print "$name = " . ref( $ref ) . " [\n";
+#	my $q = 0;
+#	foreach my $a ( @$ref ) {
+#		if ( '' eq ref( $a ) ) {
+#			print "$q:\t'$a'\n";
+#		} else {
+#			print "$q:\t=> ".ref($a)."\n";
+#		}
+#		$q++;
+#	}
+#	print "]\n";
+#}
+
+##
+## Internal functions
+##
+
+sub _parseText( $ ) {
 	my $ref = shift;
 
 	my $attr = shift @$ref;
@@ -52,7 +66,7 @@ sub processText($) {
 	return $text;
 }
 
-sub processContributor($) {
+sub _parseContributor( $ ) {
 	my $ref = shift;
 
 	my $attr = shift @$ref;
@@ -61,12 +75,12 @@ sub processContributor($) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
 
-		push @res, ( 'username', processText($cnt) ) if 'username' eq $tag;
+		push @res, ( 'username', _parseText($cnt) ) if 'username' eq $tag;
 	}
 	return \@res;
 }
 
-sub processRevision($) {
+sub _parseRevision( $ ) {
 	my $ref = shift;
 
 	my $attr = shift @$ref;
@@ -75,15 +89,15 @@ sub processRevision($) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
 
-		$res{timestamp}   = processText       ( $cnt ) if 'timestamp'   eq $tag;
-		$res{contributor} = processContributor( $cnt ) if 'contributor' eq $tag;
-		$res{comment}     = processText       ( $cnt ) if 'comment'     eq $tag;
-		$res{text}        = processText       ( $cnt ) if 'text'        eq $tag;
+		$res{timestamp}   = _parseText       ( $cnt ) if 'timestamp'   eq $tag;
+		$res{contributor} = _parseContributor( $cnt ) if 'contributor' eq $tag;
+		$res{comment}     = _parseText       ( $cnt ) if 'comment'     eq $tag;
+		$res{text}        = _parseText       ( $cnt ) if 'text'        eq $tag;
 	}
 	return \%res;
 }
 
-sub processPage($$) {
+sub _parsePage( $$ ) {
 	my $res = shift;
 	my $ref = shift;
 
@@ -93,43 +107,23 @@ sub processPage($$) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
 
-		$title    = processText    ( $cnt ) if 'title'    eq $tag;
-		$revision = processRevision( $cnt ) if 'revision' eq $tag;
+		$title    = _parseText    ( $cnt ) if 'title'    eq $tag;
+		$revision = _parseRevision( $cnt ) if 'revision' eq $tag;
 	}
 	$$res{ $title } = $revision if defined $title and defined $revision;
 }
 
-sub processMediawiki($$) {
-	my $res = shift;
+sub _parseMediawiki( $ ) {
 	my $ref = shift;
 
 	my $attr = shift @$ref;
-	while ( scalar( @$ref ) ) {
-		my $tag = shift @$ref;
-		my $cnt = shift @$ref;
-		processPage( $res, $cnt ) if 'page' eq $tag;
-	}
-}
-
-sub processDocument($) {
 	my %res = ();
-	my $ref = shift;
-
 	while ( scalar( @$ref ) ) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
-		if ( $tag eq 'mediawiki' ) {
-			processMediawiki( \%res, $cnt );
-			return \%res;
-		}
+		_parsePage( \%$res, $cnt ) if 'page' eq $tag;
 	}
-	return undef;
-}
-
-sub process( $ ) {
-	my $p = XML::Parser->new( Style => 'Tree' );
-	my $tree = $p->parse( shift );
-	return processDocument( $tree );
+	return %res;
 }
 
 1;

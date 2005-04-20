@@ -8,22 +8,18 @@ use HTML::Form;
 use URI;
 
 use Net::Anura::ExportParser;
+use Net::Anura::Page;
 
 BEGIN {
-	use Exporter   ();
+	use Exporter ();
 	our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 
 	$VERSION     = sprintf("%d.%02d", 0.1 =~ /(\d+)\.(\d+)/);
-
 	@ISA         = qw(Exporter);
-	@EXPORT      = ();     # e.g.: qw(&func1 &func2 &func4)
-	%EXPORT_TAGS = ();     # e.g.: TAG => [ qw!name1 name2! ],
-
-	# your exported package globals go here,
-	# as well as any optionally exported functions
-	@EXPORT_OK   = ();     # e.g.: qw($Var1 %Hashit &func3)
+	@EXPORT      = ();
+	@EXPORT_OK   = ();
+	%EXPORT_TAGS = ();
 }
-
 our @EXPORT_OK;
 
 sub new {
@@ -46,9 +42,9 @@ sub new {
 	return $self;
 }
 
-#
-# Login and logout
-#
+##
+## Login and logout
+##
 
 sub login {
 	my $self = shift;
@@ -92,17 +88,17 @@ sub logout {
 	return 1;
 }
 
-#
-# Page manipulation
-#
+##
+## Page manipulation
+##
 
-#
-# Editing
-#
+##
+## Editing
+##
 
 ## TODO: Rewrite this to take @reqs or %reqs, with %reqs allowing curonly=>0/1.
 ##       Perhaps default to curonly, and call opt 'allrevs'?
-##       Either way, will have to create <= 2 separate POSTs,
+##       Either way, will have to create 1 or 2 separate POSTs,
 ##       one for curonly=0, one for curonly=1
 sub get {
 	my ( $self, @reqs ) = @_;
@@ -120,10 +116,10 @@ sub get {
 	);
 
 	return undef unless $res->content_type eq 'text/xml';
-	return Net::Anura::ExportParser->process( $res->content );
+	return Net::Anura::ExportParser->parse( $res->content );
 }
 
-## TODO: Rewrite this to support get() return format
+## TODO: Rewrite this to accept Net::Anura::Page objects
 sub put {
 	my ( $self, $page, $contents, $summary, %args ) = @_;
 	return 0 unless defined $page and defined $contents;
@@ -166,9 +162,9 @@ sub put {
 	return ( 302 == $res->code );
 }
 
-#
-# Deleting
-#
+##
+## Deleting
+##
 
 sub delete {
 	my ($self, $page, $reason) = @_;
@@ -203,9 +199,9 @@ sub delete {
 	return ( 302 == $res->code );
 }
 
-#
-# Uploading
-#
+##
+## Uploading
+##
 
 sub upload {
 	my ($self, $file, $summary) = @_;
@@ -252,9 +248,9 @@ sub upload {
 	return ( 302 == $res->code );
 }
 
-#
-# Accessors/Mutators
-#
+##
+## Accessors/Mutators
+##
 
 sub user {
 	my $self = shift;
@@ -283,9 +279,9 @@ sub wiki {
 	return $self->{_wiki};
 }
 
-#
-# Misc internal functions
-#
+##
+## Internal functions
+##
 
 ## TODO: this ought to check the names of the three cookies we find to ensure
 ##       they all have the same prefix. Imagine a situation where there's

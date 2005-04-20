@@ -3,3 +3,4 @@ Makefile.PL
 bin/anuracli.pl
 lib/Net/Anura.pm
 lib/Net/Anura/ExportParser.pm
+lib/Net/Anura/Page.pm
