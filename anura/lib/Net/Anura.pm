@@ -7,6 +7,8 @@ use HTTP::Cookies;
 use HTML::Form;
 use URI;
 
+use Net::Anura::ExportParser;
+
 BEGIN {
 	use Exporter   ();
 	our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
@@ -38,7 +40,6 @@ sub new {
 	$self->{_cookie_jar} = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 );
 	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura", cookie_jar => $self->{_cookie_jar} );
 	$self->{_headers}    = [ Host => $self->{_host} ];
-
 	$self->{_logged_in}  = 0;
 
 	bless ($self, $class);
@@ -53,8 +54,8 @@ sub login {
 	my $self = shift;
 	{
 		my ( $u, $p ) = @_;
-		$self->user $u if defined $u;
-		$self->password $p if defined $p;
+		$self->user( $u ) if defined $u;
+		$self->password( $p ) if defined $p;
 	}
 
 	return 1 if $self->{_logged_in};
@@ -99,23 +100,30 @@ sub logout {
 # Editing
 #
 
-# TODO: Rewrite this to use Special:Export
+## TODO: Rewrite this to take @reqs or %reqs, with %reqs allowing curonly=>0/1.
+##       Perhaps default to curonly, and call opt 'allrevs'?
+##       Either way, will have to create <= 2 separate POSTs,
+##       one for curonly=0, one for curonly=1
 sub get {
 	my ( $self, @reqs ) = @_;
+	return undef unless @reqs;
 	my %results = ();
 
-	foreach my $page ( @reqs ) {
-		my $res = $self->{_ua}->get(
-			$self->{_wiki} . "?title=$page&action=raw",
-			$self->{_headers}
-		);
+	my $res = $self->{_ua}->post(
+		$self->{_wiki} . '/Special:Export',
+		$self->{_headers},
+		Content => [
+			action => 'submit',
+			curonly => 'true',
+			pages => join( "\r\n", @reqs )
+		]
+	);
 
-		%pages{$page} = $res->content if ( 200 == $res->code );
-	}
-
-	return %results;
+	return undef unless $res->content_type eq 'text/xml';
+	return Net::Anura::ExportParser->process( $res->content );
 }
 
+## TODO: Rewrite this to support get() return format
 sub put {
 	my ( $self, $page, $contents, $summary, %args ) = @_;
 	return 0 unless defined $page and defined $contents;
