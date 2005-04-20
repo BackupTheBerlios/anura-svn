@@ -135,6 +135,9 @@ sub put {
 	my $minor = $args{minor};
 	my $watch = $args{watch};
 
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "/$page?action=edit",
 		$self->{_headers}
@@ -145,7 +148,7 @@ sub put {
 	my ( $Edittime, $EditToken );
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
-		next if ( $f->attr( 'name' ) ne 'editform' );
+		next unless $f->attr( 'name' ) eq 'editform';
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 		$Edittime  = $f->value( 'wpEdittime'  ) if defined $f->find_input( 'wpEdittime' );
 	}
@@ -309,7 +312,7 @@ sub _scancookies {
 	);
 
 	return
-		1 == scalar( keys( @prefixes ) )          and
+		1 == scalar( keys( %prefixes ) )          and
 		$cookie{'UserName'} eq $self->{_username} and
 		exists $cookie{'Token'}                   and
 		exists $cookie{'UserID'}                  and

@@ -20,4 +20,4 @@ my $zive = Net::Anura->new(
 	password => 'password'
 );
 #print $zive->put( $art );
-print $zive->put( $art->title, $art->revision->text, 'Transwiki: ' . $art->revision->title ), "\n";
+print $zive->put( $art->title, $art->revision->text, 'Transwiki: ' . $art->revision->comment ), "\n";
