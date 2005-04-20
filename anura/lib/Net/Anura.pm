@@ -43,7 +43,7 @@ sub new {
 }
 
 ##
-## Login and logout
+## Public methods
 ##
 
 sub login {
@@ -87,14 +87,6 @@ sub logout {
 	$self->{_logged_in} = 0;
 	return 1;
 }
-
-##
-## Page manipulation
-##
-
-##
-## Editing
-##
 
 ## TODO: Rewrite this to take @reqs or %reqs, with %reqs allowing curonly=>0/1.
 ##       Perhaps default to curonly, and call opt 'allrevs'?
@@ -172,47 +164,10 @@ sub put {
 	return ( 302 == $res->code );
 }
 
-##
-## Deleting
-##
-
-sub delete {
-	my ($self, $page, $reason) = @_;
-	return 0 unless defined $page;
-
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
-
-	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "?title=$page&action=delete",
-		$self->{_headers}
-	);
-	return 0 if ( 200 != $res->code );
-
-	my $EditToken;
-	my @forms = HTML::Form->parse( $res );
-	for my $f ( @forms ) {
-		next unless $f->attr( 'id' ) eq 'deleteconfirm';
-		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
-	}
-	return 0 unless defined $EditToken;
-
-	$res = $self->{_ua}->post(
-		$self->{_wiki} . "?title=$page&action=delete",
-		$self->{_headers},
-		Content => [
-			wpReason => $reason,
-			wpConfirm => 1, # Needed for REL1_4, no longer exists in REL1_5
-			wpConfirmB => 1,
-			wpEditToken => $EditToken
-		]
-	);
-	return ( 302 == $res->code );
+## TODO
+sub download {
+	return undef;
 }
-
-##
-## Uploading
-##
 
 sub upload {
 	my ($self, $file, $summary) = @_;
@@ -259,6 +214,56 @@ sub upload {
 	return ( 302 == $res->code );
 }
 
+## TODO
+sub protect {
+	my ( $self, $name, $status ) = @_;
+	return 0 unless defined $status;
+
+	return undef;
+}
+
+sub delete {
+	my ($self, $page, $reason) = @_;
+	return 0 unless defined $page;
+
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "?title=$page&action=delete",
+		$self->{_headers}
+	);
+	return 0 if ( 200 != $res->code );
+
+	my $EditToken;
+	my @forms = HTML::Form->parse( $res );
+	for my $f ( @forms ) {
+		next unless $f->attr( 'id' ) eq 'deleteconfirm';
+		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
+	}
+	return 0 unless defined $EditToken;
+
+	$res = $self->{_ua}->post(
+		$self->{_wiki} . "?title=$page&action=delete",
+		$self->{_headers},
+		Content => [
+			wpReason => $reason,
+			wpConfirm => 1, # Needed for REL1_4, no longer exists in REL1_5
+			wpConfirmB => 1,
+			wpEditToken => $EditToken
+		]
+	);
+	return ( 302 == $res->code );
+}
+
+## TODO
+sub move {
+	my ( $self, $oldname, $newname ) = @_;
+	return 0 unless defined $newname;
+
+	return undef;
+}
+
 ##
 ## Accessors/Mutators
 ##
@@ -288,6 +293,11 @@ sub wiki {
 		$self->{_logged_in} = 0;
 	}
 	return $self->{_wiki};
+}
+
+sub logged_in {
+	my $self = shift;
+	return $self->{_logged_in};
 }
 
 ##
