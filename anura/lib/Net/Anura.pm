@@ -19,22 +19,27 @@ BEGIN {
 	@EXPORT      = ();
 	@EXPORT_OK   = ();
 	%EXPORT_TAGS = ();
+
+	%CookieJars  = ();
 }
 our @EXPORT_OK;
+
+our %CookieJars;
 
 sub new {
 	my ( $proto, %args ) = @_;
 	my $class = ref $proto || $proto;
 	my $self  = { };
 
-	$self->{_wiki}       = $args{wiki};
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
 	$self->{_username}   = $args{username};
 	$self->{_password}   = $args{password};
+	$self->wiki( $args{wiki} ) if  exists $args{wiki};
 
+	$CookieJars{ $self->{_cookiefile} } = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 ) unless exists $CookieJars{ $self->{_cookiefile} };
+	$self->{_cookie_jar} = $CookieJars{ $self->{_cookiefile} };
+	$self->{_ua}         = LWP::UserAgent->new( agent => 'Anura', cookie_jar => $self->{_cookie_jar} );
 	$self->{_host}       = URI->new( $self->{_wiki} )->host;
-	$self->{_cookie_jar} = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 );
-	$self->{_ua}         = LWP::UserAgent->new( agent => "Anura", cookie_jar => $self->{_cookie_jar} );
 	$self->{_headers}    = [ Host => $self->{_host} ];
 	$self->{_logged_in}  = 0;
 
@@ -55,7 +60,7 @@ sub login {
 	}
 
 	return 1 if $self->{_logged_in};
-	if ( $self->_scancookies( $self->{_host} ) ) {
+	if ( $self->_scancookies ) {
 		$self->{_logged_in} = 1;
 		return 1;
 	}
@@ -432,7 +437,10 @@ sub password {
 sub wiki {
 	my $self = shift;
 	if ( @_ ) {
-		$self->{_wiki}      = shift;
+		my $uri = URI->new( shift );
+		my $path = $uri->path;
+		$uri->path( $path . ( $path =~ ,/$, ? '' : '/' ) . 'index.php' );
+		$self->{_wiki}      = $uri->as_string;
 		$self->{_logged_in} = 0;
 	}
 	return $self->{_wiki};
@@ -459,7 +467,7 @@ sub _get {
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '?title=Special:Export',
 		$self->{_headers},
-		Content => %post
+		Content => [ %post ]
 	);
 	return undef unless $res->content_type eq 'text/xml' or $res->content_type eq 'application/xml';
 
@@ -474,7 +482,7 @@ sub _get {
 }
 
 sub _scancookies {
-	my ( $self, $host ) = @_;
+	my ( $self, ) = @_;
 	my %cookie;
 	my %prefixes;
 
@@ -482,7 +490,7 @@ sub _scancookies {
 		sub {
 #			my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
 			my ( undef,    $key, $val, undef, $domain, undef, undef,     undef,   $expires, undef,    undef ) = @_;
-			return if ( $expires <= time || $host ne $domain );
+			return if ( $expires <= time || $self->{_host} ne $domain );
 			if ( $key =~ /^(.*?)(Token|UserID|UserName)$/i ) {
 				$cookie{"$1$2"} = $val;
 				$prefixes{$2} = 1;
