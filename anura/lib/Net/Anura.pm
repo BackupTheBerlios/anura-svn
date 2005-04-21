@@ -98,7 +98,6 @@ sub getAllRevisions {
 	return $self->_get( 1, @reqs );
 }
 
-## TODO: Rewrite this to accept Net::Anura::Page objects as well
 sub put {
 	my ( $self, $page, $contents, $summary, %args ) = @_;
 	return 0 unless defined $page and defined $contents;

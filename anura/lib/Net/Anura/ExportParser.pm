@@ -75,6 +75,7 @@ sub _parseContributor( $ ) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
 
+		push @res, ( 'ip',       _parseText($cnt) ) if 'ip'       eq $tag;
 		push @res, ( 'username', _parseText($cnt) ) if 'username' eq $tag;
 	}
 	return \@res;
