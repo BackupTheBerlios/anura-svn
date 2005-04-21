@@ -223,7 +223,7 @@ sub protect {
 	my %post = (
 		wpReasonProtect => $reason,
 		wpConfirmProtect => 1,
-		wpConfirmProtectB => 'Confirm',
+		wpConfirmProtectB => 1,
 		wpEditToken => $EditToken
 	);
 	$post{wpMoveOnly} = 1 if $onlyMoves;
@@ -265,7 +265,7 @@ sub unprotect {
 		Content => [
 			wpReasonProtect => $reason,
 			wpConfirmProtect => 1,
-			wpConfirmProtectB => 'Confirm',
+			wpConfirmProtectB => 1,
 			wpEditToken => $EditToken
 		]
 	);
@@ -276,7 +276,7 @@ sub unprotect {
 }
 
 sub delete {
-	my ($self, $page, $reason) = @_;
+	my ( $self, $page, $reason ) = @_;
 	return 0 unless defined $page;
 
 	$self->login( ) unless $self->{_logged_in};
@@ -286,7 +286,7 @@ sub delete {
 		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers}
 	);
-	return 0 if ( 200 != $res->code );
+	return 0 unless 200 != $res->code;
 
 	my $EditToken;
 	my @forms = HTML::Form->parse( $res );
@@ -309,12 +309,47 @@ sub delete {
 	return ( 302 == $res->code );
 }
 
-## TODO
 sub move {
-	my ( $self, $oldname, $newname ) = @_;
+	my ( $self, $page, $newname, $moveTalkToo ) = @_;
 	return 0 unless defined $newname;
 
-	return undef;
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "?title=Special:Movepage&target=$page",
+		$self->{_headers}
+	);
+	return 0 unless 200 != $res->code;
+
+	my ( $EditToken, $Movetalk );
+	my @forms = HTML::Form->parse( $res );
+	for my $f ( @forms ) {
+		next unless $f->attr( 'id' ) eq 'movepage';
+		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
+		$Movetalk  = $f->value( 'wpMovetalk'  ) if defined $f->find_input( 'wpMovetalk' );
+	}
+	return 0 unless defined $EditToken;
+
+	my %post = (
+		wpNewTitle => $newname,
+		wpOldTitle => $page,
+		wpMove => 1,
+		wpEditToken => $EditToken
+	);
+	if ( defined( $moveTalkToo ) ) {
+		$post{wpMovetalk} = $moveTalkToo ? 1 : 0;
+	} elsif ( defined( $Movetalk ) ) {
+		$post{wpMovetalk} = $Movetalk;
+	}
+
+	$res = $self->{_ua}->post(
+		$self->{_wiki} . "?title=Special:Movepage&action=submit",
+		$self->{_headers},
+		Content => [ %post ]
+	);
+
+	return ( 302 == $res->code );
 }
 
 ## TODO
