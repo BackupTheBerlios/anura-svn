@@ -282,7 +282,7 @@ sub delete {
 		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers}
 	);
-	return 0 unless 200 != $res->code;
+	return 0 unless 200 == $res->code;
 
 	my $EditToken;
 	my @forms = HTML::Form->parse( $res );
@@ -302,7 +302,7 @@ sub delete {
 			wpEditToken => $EditToken
 		]
 	);
-	return ( 302 == $res->code );
+	return ( 200 == $res->code );
 }
 
 sub move {
