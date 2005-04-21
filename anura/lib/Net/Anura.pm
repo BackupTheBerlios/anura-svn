@@ -383,10 +383,28 @@ sub isProtected {
 	return undef;
 }
 
-## TODO
 sub isWatched {
-	my ( $self ) = shift;
-	return undef;
+	my ( $self, $page ) = @_;
+	return 0 unless defined $page;
+
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "?title=$page&action=edit",
+		$self->{_headers}
+	);
+	return 0 unless 200 == $res->code;
+
+	my $Watchthis;
+	my @forms = HTML::Form->parse( $res );
+	my $i;
+	for my $f ( @forms ) {
+		next unless $f->attr( 'name' ) eq 'editform';
+		$i = $f->find_input( 'wpWatchthis' );
+		return ( $i->value eq ($i->possible_values)[1] ) if defined $i and defined $i->value;
+	}
+	return 0;
 }
 
 ##
