@@ -19,8 +19,6 @@ BEGIN {
 	@EXPORT      = ();
 	@EXPORT_OK   = ();
 	%EXPORT_TAGS = ();
-
-	my %CookieJars  = ();
 }
 our @EXPORT_OK;
 
@@ -30,6 +28,7 @@ sub new {
 	my ( $proto, %args ) = @_;
 	my $class = ref $proto || $proto;
 	my $self  = { };
+	bless ($self, $class);
 
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
 	$self->{_username}   = $args{username};
@@ -43,7 +42,6 @@ sub new {
 	$self->{_headers}    = [ Host => $self->{_host} ];
 	$self->{_logged_in}  = 0;
 
-	bless ($self, $class);
 	return $self;
 }
 
@@ -482,7 +480,7 @@ sub _get {
 }
 
 sub _scancookies {
-	my ( $self, ) = @_;
+	my $self = shift;
 	my %cookie;
 	my %prefixes;
 
