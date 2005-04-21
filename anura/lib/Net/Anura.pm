@@ -160,7 +160,7 @@ sub upload {
 	return 0 unless defined $file;
 
 	my $res = $self->{_ua}->post(
-		$self->{_wiki} . '/Special:Upload',
+		$self->{_wiki} . '?title=Special:Upload',
 		$self->{_headers},
 		Content => [
 			wpUploadFile => [ $file ],
@@ -439,7 +439,7 @@ sub _get {
 	);
 	$post{curonly} = 1 if $curonly;
 	my $res = $self->{_ua}->post(
-		$self->{_wiki} . '/Special:Export',
+		$self->{_wiki} . '?title=Special:Export',
 		$self->{_headers},
 		Content => %post
 	);
