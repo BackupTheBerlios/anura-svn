@@ -473,7 +473,7 @@ sub _get {
 	my @pages;
 
 	foreach my $k ( keys %$page ) {
-		push @pages, Net::Anura::Page->new( $k, %{ $$page{$k} } );
+		push @pages, Net::Anura::Page->new( $k, $$page{$k} );
 	}
 
 	return @pages;

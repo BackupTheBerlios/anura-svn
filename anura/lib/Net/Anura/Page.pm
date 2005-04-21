@@ -17,12 +17,16 @@ BEGIN {
 our @EXPORT_OK;
 
 sub new {
-	my ( $proto, $title, %revision ) = @_;
+	my ( $proto, $title, $inrevs ) = @_;
 	my $class = ref $proto || $proto;
 	my $self  = { };
 
-	$self->{_title}    = $title;
-	$self->{_revision} = Net::Anura::Page::Revision->new( %revision );
+	$self->{_title} = $title;
+	my @revisions;
+	foreach my $rev ( @$inrevs ) {
+		push @revisions, Net::Anura::Page::Revision->new( %$rev );
+	}
+	@{ $self->{_revisions} } = @revisions;
 
 	bless ($self, $class);
 	return $self;
@@ -34,14 +38,14 @@ sub new {
 
 sub title {
 	my $self = shift;
-	$self->{_title} = shift if ( @_ );
+	$self->{_title} = shift if @_ ;
 	return $self->{_title};
 }
 
-sub revision {
+sub revisions {
 	my $self = shift;
-	$self->{_revision} = shift if ( @_ );
-	return $self->{_revision};
+	@{ $self->{_revisions} } = @_ if @_;
+	return $self->{_revisions};
 }
 
 ##

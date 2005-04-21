@@ -103,15 +103,15 @@ sub _parsePage( $$ ) {
 	my $ref = shift;
 
 	my $attr = shift @$ref;
-	my ( $title, $revision );
+	my ( $title, @revisions );
 	while ( scalar( @$ref ) ) {
 		my $tag = shift @$ref;
 		my $cnt = shift @$ref;
 
-		$title    = _parseText    ( $cnt ) if 'title'    eq $tag;
-		$revision = _parseRevision( $cnt ) if 'revision' eq $tag;
+		$title =         _parseText    ( $cnt ) if 'title'    eq $tag;
+		push @revisions, _parseRevision( $cnt ) if 'revision' eq $tag;
 	}
-	$$res{ $title } = $revision if defined $title and defined $revision;
+	@{ $$res{ $title } } = @revisions if defined $title and @revisions;
 }
 
 sub _parseMediawiki( $ ) {
