@@ -436,8 +436,8 @@ sub wiki {
 	my $self = shift;
 	if ( @_ ) {
 		my $uri = URI->new( shift );
-		my $path = $uri->path;
-		$uri->path( $path . ( $path =~ /\/$/ ? '' : '/' ) . 'index.php' );
+		(my $path = $uri->path) =~ s#(?<!/)$#/#g;
+		$uri->path( $path . 'index.php' );
 		$self->{_wiki}      = $uri->as_string;
 		$self->{_logged_in} = 0;
 	}
