@@ -90,35 +90,12 @@ sub logout {
 
 sub get {
 	my ( $self, @reqs ) = @_;
-	return undef unless @reqs;
-	my %results = ();
-
-	my $res = $self->{_ua}->post(
-		$self->{_wiki} . '/Special:Export',
-		$self->{_headers},
-		Content => [
-			action => 'submit',
-			curonly => 'true',
-			pages => join( "\r\n", @reqs )
-		]
-	);
-
-	return undef unless $res->content_type eq 'text/xml' or $res->content_type eq 'application/xml';
-
-	my $page = Net::Anura::ExportParser::parse( $res->content );
-	my @pages;
-
-	foreach my $k ( keys %$page ) {
-		push @pages, Net::Anura::Page->new( $k, %{ $$page{$k} } );
-	}
-
-	return @pages;
+	return $self->_get( undef, @reqs );
 }
 
-## TODO
 sub getAllRevisions {
-	my $self = shift;
-	return undef;
+	my ( $self, @reqs ) = @_;
+	return $self->_get( 1, @reqs );
 }
 
 ## TODO: Rewrite this to accept Net::Anura::Page objects as well
@@ -326,6 +303,32 @@ sub logged_in {
 ##
 ## Internal functions
 ##
+
+sub _get {
+	my ( $self, $curonly, @reqs ) = @_;
+	my %results = ();
+
+	my %post = (
+		action => 'submit',
+		pages => join( "\r\n", @reqs )
+	);
+	%post{curonly} => 'true' if $curonly;
+	my $res = $self->{_ua}->post(
+		$self->{_wiki} . '/Special:Export',
+		$self->{_headers},
+		Content => %post
+	);
+	return undef unless $res->content_type eq 'text/xml' or $res->content_type eq 'application/xml';
+
+	my $page = Net::Anura::ExportParser::parse( $res->content );
+	my @pages;
+
+	foreach my $k ( keys %$page ) {
+		push @pages, Net::Anura::Page->new( $k, %{ $$page{$k} } );
+	}
+
+	return @pages;
+}
 
 sub _scancookies {
 	my ( $self, $host ) = @_;
