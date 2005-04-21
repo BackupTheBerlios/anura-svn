@@ -234,8 +234,6 @@ sub protect {
 		Content => [ %post ]
 	);
 
-	print STDERR ">> Net::Anura::protect: res->code is " . $res->code . "\n";
-
 	return ( 302 == $res->code );
 }
 
@@ -269,8 +267,6 @@ sub unprotect {
 			wpEditToken => $EditToken
 		]
 	);
-
-	print STDERR ">> Net::Anura::protect: res->code is " . $res->code . "\n";
 
 	return ( 302 == $res->code );
 }
@@ -412,7 +408,7 @@ sub _get {
 		action => 'submit',
 		pages => join( "\r\n", @reqs )
 	);
-	%post{curonly} => 'true' if $curonly;
+	$post{curonly} = 1 if $curonly;
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '/Special:Export',
 		$self->{_headers},
