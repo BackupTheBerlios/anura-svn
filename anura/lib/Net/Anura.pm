@@ -486,8 +486,8 @@ sub _scancookies {
 
 	$self->{_cookie_jar}->scan(
 		sub {
-#			my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
-			my ( undef,    $key, $val, undef, $domain, undef, undef,     undef,   $expires, undef,    undef ) = @_;
+			#my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
+			my ( undef, $key, $val, undef, $domain, undef, undef, undef, $expires, undef, undef ) = @_;
 			return if ( $expires <= time || $self->{_host} ne $domain );
 			if ( $key =~ /^(.*?)(Token|UserID|UserName)$/i ) {
 				$cookie{"$1$2"} = $val;
