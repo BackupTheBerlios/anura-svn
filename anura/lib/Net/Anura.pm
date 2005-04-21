@@ -88,10 +88,6 @@ sub logout {
 	return 1;
 }
 
-## TODO: Rewrite this to take @reqs or %reqs, with %reqs allowing curonly=>0/1.
-##       Perhaps default to curonly, and call opt 'allrevs'?
-##       Either way, will have to create 1 or 2 separate POSTs,
-##       one for curonly=0, one for curonly=1
 sub get {
 	my ( $self, @reqs ) = @_;
 	return undef unless @reqs;
@@ -119,7 +115,13 @@ sub get {
 	return @pages;
 }
 
-## TODO: Rewrite this to accept Net::Anura::Page objects
+## TODO
+sub getAllRevisions {
+	my $self = shift;
+	return undef;
+}
+
+## TODO: Rewrite this to accept Net::Anura::Page objects as well
 sub put {
 	my ( $self, $page, $contents, $summary, %args ) = @_;
 	return 0 unless defined $page and defined $contents;
@@ -142,6 +144,8 @@ sub put {
 		next unless $f->attr( 'name' ) eq 'editform';
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 		$Edittime  = $f->value( 'wpEdittime'  ) if defined $f->find_input( 'wpEdittime' );
+		$minor     = $f->value( 'wpMinoredit' ) if defined $f->find_input( 'wpMinoredit' ) and not defined $minor;
+		$watch     = $f->value( 'wpWatchthis' ) if defined $f->find_input( 'wpWatchthis' ) and not defined $watch;
 	}
 	return 0 unless defined $EditToken;
 
@@ -166,6 +170,13 @@ sub put {
 
 ## TODO
 sub download {
+	my $self = shift;
+	return undef;
+}
+
+## TODO
+sub downloadAllRevisions {
+	my $self = shift;
 	return undef;
 }
 
@@ -261,6 +272,18 @@ sub move {
 	my ( $self, $oldname, $newname ) = @_;
 	return 0 unless defined $newname;
 
+	return undef;
+}
+
+## TODO
+sub isProtected {
+	my ( $self ) = shift;
+	return undef;
+}
+
+## TODO
+sub isWatched {
+	my ( $self ) = shift;
 	return undef;
 }
 
