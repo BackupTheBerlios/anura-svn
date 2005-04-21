@@ -109,7 +109,7 @@ sub put {
 	my $watch = $args{watch};
 
 	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "/$page?action=edit",
+		$self->{_wiki} . "?title=$page&action=edit",
 		$self->{_headers}
 	);
 	return 0 unless 200 == $res->code;
@@ -135,7 +135,7 @@ sub put {
 	$post{wpWatchthis} = 1 if $watch;
 
 	$res = $self->{_ua}->post(
-		$self->{_wiki} . "/$page?action=submit",
+		$self->{_wiki} . "?title=$page&action=submit",
 		$self->{_headers},
 		Content => [ %post ]
 	);
@@ -207,7 +207,7 @@ sub protect {
 	return 0        unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "/$page?action=protect",
+		$self->{_wiki} . "?title=$page&action=protect",
 		$self->{_headers}
 	);
 	return 0 unless 200 == $res->code;
@@ -244,7 +244,7 @@ sub unprotect {
 	return 0        unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "/$page?action=unprotect",
+		$self->{_wiki} . "?title=$page&action=unprotect",
 		$self->{_headers}
 	);
 	return 0 unless 200 == $res->code;
@@ -278,7 +278,7 @@ sub watch {
 	return 0        unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "/$page?action=watch",
+		$self->{_wiki} . "?title=$page&action=watch",
 		$self->{_headers}
 	);
 
@@ -292,7 +292,7 @@ sub unwatch {
 	return 0        unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
-		$self->{_wiki} . "/$page?action=unwatch",
+		$self->{_wiki} . "?title=$page&action=unwatch",
 		$self->{_headers}
 	);
 
