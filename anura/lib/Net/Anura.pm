@@ -112,7 +112,7 @@ sub put {
 		$self->{_wiki} . "/$page?action=edit",
 		$self->{_headers}
 	);
-	return 0 if ( 200 != $res->code );
+	return 0 unless 200 == $res->code;
 
 	my ( $Edittime, $EditToken );
 	my @forms = HTML::Form->parse( $res );
@@ -126,7 +126,6 @@ sub put {
 	return 0 unless defined $EditToken;
 
 	my %post = (
-		#wpSave     => 1, # Not used in HEAD or REL1_4 -Ævar
 		wpTextbox1  => $contents,
 		wpSummary   => $summary,
 		wpEdittime  => $Edittime,
@@ -171,7 +170,7 @@ sub upload {
 			# Note: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
 		]
 	);
-	return 1 if ( 302 == $res );
+	return 1 if 302 == $res;
 
 	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
 		#(my $error = $1) =~ s/<[^>]*>//g; # TODO: Do something smart with this.
@@ -201,12 +200,79 @@ sub upload {
 	return ( 302 == $res->code );
 }
 
-## TODO
 sub protect {
-	my ( $self, $name, $status ) = @_;
-	return 0 unless defined $status;
+	my ( $self, $page, $reason, $onlyMoves ) = @_;
 
-	return undef;
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "/$page?action=protect",
+		$self->{_headers}
+	);
+	return 0 unless 200 == $res->code;
+
+	my $EditToken;
+	my @forms = HTML::Form->parse( $res );
+	for my $f ( @forms ) {
+		next unless $f->attr( 'id' ) eq 'protectconfirm';
+		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
+	}
+	return 0 unless defined $EditToken;
+
+	my %post = (
+		wpReasonProtect => $reason,
+		wpConfirmProtect => 1,
+		wpConfirmProtectB => 'Confirm',
+		wpEditToken => $EditToken
+	);
+	$post{wpMoveOnly} = 1 if $onlyMoves;
+
+	$res = $self->{_ua}->post(
+		$self->{_wiki} . "?title=$page&action=protect",
+		$self->{_headers},
+		Content => [ %post ]
+	);
+
+	print STDERR ">> Net::Anura::protect: res->code is " . $res->code . "\n";
+
+	return ( 302 == $res->code );
+}
+
+sub unprotect {
+	my ( $self, $page, $reason ) = @_;
+
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "/$page?action=unprotect",
+		$self->{_headers}
+	);
+	return 0 unless 200 == $res->code;
+
+	my ( $EditToken );
+	my @forms = HTML::Form->parse( $res );
+	for my $f ( @forms ) {
+		next unless $f->attr( 'id' ) eq 'protectconfirm';
+		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
+	}
+	return 0 unless defined $EditToken;
+
+	$res = $self->{_ua}->post(
+		$self->{_wiki} . "?title=$page&action=unprotect",
+		$self->{_headers},
+		Content => [
+			wpReasonProtect => $reason,
+			wpConfirmProtect => 1,
+			wpConfirmProtectB => 'Confirm',
+			wpEditToken => $EditToken
+		]
+	);
+
+	print STDERR ">> Net::Anura::protect: res->code is " . $res->code . "\n";
+
+	return ( 302 == $res->code );
 }
 
 sub delete {
