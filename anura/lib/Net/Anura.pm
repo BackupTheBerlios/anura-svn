@@ -33,7 +33,7 @@ sub new {
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
 	$self->{_username}   = $args{username};
 	$self->{_password}   = $args{password};
-	$self->wiki( $args{wiki} ) if  exists $args{wiki};
+	$self->{_wiki}       = $args{wiki} if exists $args{wiki};
 
 	$CookieJars{ $self->{_cookiefile} } = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 ) unless exists $CookieJars{ $self->{_cookiefile} };
 	$self->{_cookie_jar} = $CookieJars{ $self->{_cookiefile} };
