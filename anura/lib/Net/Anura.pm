@@ -30,12 +30,17 @@ sub new {
 	my $self  = { };
 	bless ($self, $class);
 
-	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura.cookies";
+	mkdir "$ENV{HOME}/.anura" unless -d "$ENV{HOME}/.anura";
+	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura/cookies";
 	$self->{_username}   = $args{username};
 	$self->{_password}   = $args{password};
 	$self->{_wiki}       = $args{wiki} if exists $args{wiki};
 
-	$CookieJars{ $self->{_cookiefile} } = HTTP::Cookies->new( file => $self->{_cookiefile}, autosave => 1 ) unless exists $CookieJars{ $self->{_cookiefile} };
+	$CookieJars{ $self->{_cookiefile} } = HTTP::Cookies->new(
+		file => $self->{_cookiefile},
+		autosave => 1
+	) unless exists $CookieJars{ $self->{_cookiefile} };
+	
 	$self->{_cookie_jar} = $CookieJars{ $self->{_cookiefile} };
 	$self->{_ua}         = LWP::UserAgent->new( agent => 'Anura', cookie_jar => $self->{_cookie_jar} );
 	$self->{_host}       = URI->new( $self->{_wiki} )->host;
