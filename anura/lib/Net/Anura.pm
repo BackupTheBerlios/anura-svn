@@ -316,7 +316,7 @@ sub move {
 		$self->{_wiki} . "?title=Special:Movepage&target=$page",
 		$self->{_headers}
 	);
-	return 0 unless 200 != $res->code;
+	return 0 unless 200 == $res->code;
 
 	my ( $EditToken, $Movetalk );
 	my @forms = HTML::Form->parse( $res );
