@@ -271,6 +271,34 @@ sub unprotect {
 	return ( 302 == $res->code );
 }
 
+sub watch {
+	my ( $self, $page ) = @_;
+
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "/$page?action=watch",
+		$self->{_headers}
+	);
+
+	return ( 200 == $res->code );
+}
+
+sub unwatch {
+	my ( $self, $page ) = @_;
+
+	$self->login( ) unless $self->{_logged_in};
+	return 0        unless $self->{_logged_in};
+
+	my $res = $self->{_ua}->get(
+		$self->{_wiki} . "/$page?action=unwatch",
+		$self->{_headers}
+	);
+
+	return ( 200 == $res->code );
+}
+
 sub delete {
 	my ( $self, $page, $reason ) = @_;
 	return 0 unless defined $page;
@@ -302,6 +330,7 @@ sub delete {
 			wpEditToken => $EditToken
 		]
 	);
+
 	return ( 200 == $res->code );
 }
 
