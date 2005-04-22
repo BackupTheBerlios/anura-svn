@@ -467,7 +467,7 @@ sub _get {
 		action => 'submit',
 		pages => join( "\r\n", @reqs )
 	);
-	$post{curonly} = 1 if $curonly;
+	$post{curonly} = 1 unless $curonly;
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '?title=Special:Export',
 		$self->{_headers},
