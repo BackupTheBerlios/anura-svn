@@ -211,8 +211,8 @@ sub upload {
 sub protect {
 	my ( $self, $page, $reason, $onlyMoves ) = @_;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=protect",
