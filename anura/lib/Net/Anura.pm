@@ -101,7 +101,7 @@ sub get {
 	return $self->_get( undef, @reqs );
 }
 
-sub getAllRevisions {
+sub getAll {
 	my ( $self, @reqs ) = @_;
 	return $self->_get( 1, @reqs );
 }
@@ -158,7 +158,7 @@ sub download {
 }
 
 ## TODO
-sub downloadAllRevisions {
+sub downloadAll {
 	my $self = shift;
 	return undef;
 }
