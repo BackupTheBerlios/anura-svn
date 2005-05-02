@@ -35,7 +35,7 @@ sub new {
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura/cookies";
 	$self->{_username}   = $args{username};
 	$self->{_password}   = $args{password};
-	$self->wiki( $args{wiki} ) if exists $args{wiki};
+	$self->wiki( $args{wiki} );
 
 	$CookieJars{ $self->{_cookiefile} } = HTTP::Cookies->new(
 		file => $self->{_cookiefile},
@@ -440,8 +440,9 @@ sub wiki {
 	my $self = shift;
 	if ( @_ ) {
 		my $uri = URI->new( shift );
-		(my $path = $uri->path) =~ s#/+$#\/index.php#;
+		( my $path = $uri->path ) =~ s#/+$#/index.php#;
 		$uri->path( $path );
+		$uri->query( undef );
 		$self->{_wiki}      = $uri->as_string;
 		$self->{_host}      = $uri->host;
 		$self->{_headers}   = [ Host => $self->{_host} ];
@@ -467,8 +468,8 @@ sub _get {
 		action => 'submit',
 		pages => join( "\n", @reqs )
 	);
-	
-	$post{curonly} = 1 unless $curonly;	
+
+	$post{curonly} = 1 unless $curonly;
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '?title=Special:Export',
 		$self->{_headers},
