@@ -440,9 +440,8 @@ sub wiki {
 	my $self = shift;
 	if ( @_ ) {
 		my $uri = URI->new( shift );
-		( my $path = $uri->path ) =~ s#/*$#/index.php#;
+		(my $path = $uri->path) =~ s#/+$#\/index.php#;
 		$uri->path( $path );
-		$uri->query( '' );
 		$self->{_wiki}      = $uri->as_string;
 		$self->{_host}      = $uri->host;
 		$self->{_headers}   = [ Host => $self->{_host} ];
