@@ -2,6 +2,7 @@ package Net::Anura;
 
 use strict;
 use warnings;
+
 use LWP::UserAgent;
 use HTTP::Cookies;
 use HTML::Form;
@@ -12,39 +13,37 @@ use Net::Anura::Page;
 
 BEGIN {
 	use Exporter ();
-	our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
+	our ( $VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS );
 
-	$VERSION     = sprintf("%d.%02d", 0.1 =~ /(\d+)\.(\d+)/);
+	$VERSION     = sprintf( "%d.%02d", 0.1 =~ /(\d+)\.(\d+)/ );
 	@ISA         = qw(Exporter);
 	@EXPORT      = ();
 	@EXPORT_OK   = ();
 	%EXPORT_TAGS = ();
 }
-our @EXPORT_OK;
 
 our %CookieJars;
+our @EXPORT_OK;
 
 sub new {
 	my ( $proto, %args ) = @_;
 	my $class = ref $proto || $proto;
 	my $self  = { };
-	bless ($self, $class);
+	bless ( $self, $class );
 
 	mkdir "$ENV{HOME}/.anura" unless -d "$ENV{HOME}/.anura";
 	$self->{_cookiefile} = exists $args{cookie_jar} ? $args{cookie_jar} : "$ENV{HOME}/.anura/cookies";
 	$self->{_username}   = $args{username};
 	$self->{_password}   = $args{password};
-	$self->{_wiki}       = $args{wiki} if exists $args{wiki};
+	$self->wiki( $args{wiki} ) if exists $args{wiki};
 
 	$CookieJars{ $self->{_cookiefile} } = HTTP::Cookies->new(
 		file => $self->{_cookiefile},
 		autosave => 1
 	) unless exists $CookieJars{ $self->{_cookiefile} };
-	
+
 	$self->{_cookie_jar} = $CookieJars{ $self->{_cookiefile} };
 	$self->{_ua}         = LWP::UserAgent->new( agent => 'Anura', cookie_jar => $self->{_cookie_jar} );
-	$self->{_host}       = URI->new( $self->{_wiki} )->host;
-	$self->{_headers}    = [ Host => $self->{_host} ];
 	$self->{_logged_in}  = 0;
 
 	return $self;
@@ -56,11 +55,8 @@ sub new {
 
 sub login {
 	my $self = shift;
-	{
-		my ( $u, $p ) = @_;
-		$self->username( $u ) if defined $u;
-		$self->password( $p ) if defined $p;
-	}
+	$self->username( shift ) if @_;
+	$self->password( shift ) if @_;
 
 	return 1 if $self->{_logged_in};
 	if ( $self->_scancookies ) {
@@ -101,7 +97,7 @@ sub get {
 	return $self->_get( undef, @reqs );
 }
 
-sub getAll {
+sub getAllRevisions {
 	my ( $self, @reqs ) = @_;
 	return $self->_get( 1, @reqs );
 }
@@ -110,8 +106,8 @@ sub put {
 	my ( $self, $page, $contents, $summary, %args ) = @_;
 	return 0 unless defined $page and defined $contents;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $minor = $args{minor};
 	my $watch = $args{watch};
@@ -158,14 +154,17 @@ sub download {
 }
 
 ## TODO
-sub downloadAll {
+sub downloadAllRevisions {
 	my $self = shift;
 	return undef;
 }
 
 sub upload {
-	my ($self, $file, $summary) = @_;
+	my ( $self, $file, $summary ) = @_;
 	return 0 unless defined $file;
+
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '?title=Special:Upload',
@@ -175,7 +174,7 @@ sub upload {
 			wpUploadDescription => $summary,
 			wpUpload => 1,
 			wpUploadAffirm => 1
-			# Note: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
+			# TODO: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
 		]
 	);
 	return 1 if 302 == $res;
@@ -187,7 +186,7 @@ sub upload {
 		my $SessionKey;
 		my @forms = HTML::Form->parse( $res );
 		for my $f ( @forms ) {
-			next if ( $f->attr( 'id' ) ne 'uploadwarning' );
+			next unless $f->attr( 'id' ) eq 'uploadwarning';
 			$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
 		}
 		return 0 unless defined $SessionKey;
@@ -248,8 +247,8 @@ sub protect {
 sub unprotect {
 	my ( $self, $page, $reason ) = @_;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=unprotect",
@@ -282,8 +281,8 @@ sub unprotect {
 sub watch {
 	my ( $self, $page ) = @_;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=watch",
@@ -296,8 +295,8 @@ sub watch {
 sub unwatch {
 	my ( $self, $page ) = @_;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=unwatch",
@@ -311,8 +310,8 @@ sub delete {
 	my ( $self, $page, $reason ) = @_;
 	return 0 unless defined $page;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=delete",
@@ -346,8 +345,8 @@ sub move {
 	my ( $self, $page, $newname, $moveTalkToo ) = @_;
 	return 0 unless defined $newname;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=Special:Movepage&target=$page",
@@ -395,8 +394,8 @@ sub isWatched {
 	my ( $self, $page ) = @_;
 	return 0 unless defined $page;
 
-	$self->login( ) unless $self->{_logged_in};
-	return 0        unless $self->{_logged_in};
+	$self->login unless $self->{_logged_in};
+	return 0     unless $self->{_logged_in};
 
 	my $res = $self->{_ua}->get(
 		$self->{_wiki} . "?title=$page&action=edit",
@@ -441,10 +440,12 @@ sub wiki {
 	my $self = shift;
 	if ( @_ ) {
 		my $uri = URI->new( shift );
-		(my $path = $uri->path) =~ s#/*$#/index.php#;
+		( my $path = $uri->path ) =~ s#/*$#/index.php#;
 		$uri->path( $path );
 		$uri->query( '' );
 		$self->{_wiki}      = $uri->as_string;
+		$self->{_host}      = $uri->host;
+		$self->{_headers}   = [ Host => $self->{_host} ];
 		$self->{_logged_in} = 0;
 	}
 	return $self->{_wiki};
@@ -494,6 +495,7 @@ sub _scancookies {
 		sub {
 			#my ( $version, $key, $val, $path, $domain, $port, $pathspec, $secure, $expires, $discard, $hash ) = @_;
 			my ( undef, $key, $val, undef, $domain, undef, undef, undef, $expires, undef, undef ) = @_;
+			next unless defined $expires and defined $domain;
 			return if ( $expires <= time || $self->{_host} ne $domain );
 			if ( $key =~ /^(.*?)(Token|UserID|UserName)$/i ) {
 				$cookie{"$1$2"} = $val;
