@@ -466,15 +466,16 @@ sub _get {
 
 	my %post = (
 		action => 'submit',
-		pages => join( "\r\n", @reqs )
+		pages => join( "\n", @reqs )
 	);
-	$post{curonly} = 1 unless $curonly;
+	
+	$post{curonly} = 1 unless $curonly;	
 	my $res = $self->{_ua}->post(
 		$self->{_wiki} . '?title=Special:Export',
 		$self->{_headers},
 		Content => [ %post ]
 	);
-	return undef unless $res->content_type eq 'text/xml' or $res->content_type eq 'application/xml';
+	return undef unless $res->content_type eq 'application/xml';
 
 	my $page = Net::Anura::ExportParser::parse( $res->content );
 	my @pages;
