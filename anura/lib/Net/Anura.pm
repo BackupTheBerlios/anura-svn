@@ -43,7 +43,11 @@ sub new {
 	) unless exists $CookieJars{ $self->{_cookiefile} };
 
 	$self->{_cookie_jar} = $CookieJars{ $self->{_cookiefile} };
-	$self->{_ua}         = LWP::UserAgent->new( agent => 'Anura', cookie_jar => $self->{_cookie_jar} );
+	$self->{_ua}         = LWP::UserAgent->new(
+		agent => "",
+		cookie_jar => $self->{_cookie_jar},
+		max_redirect => 1
+	);
 	$self->{_logged_in}  = 0;
 
 	return $self;
@@ -75,6 +79,7 @@ sub login {
 		]
 	);
 
+	# The wiki sends 302 on success and 200 on failiure
 	$self->{_logged_in} = ( 302 == $res->code );
 	return $self->{_logged_in};
 }
@@ -121,7 +126,7 @@ sub put {
 	my ( $Edittime, $EditToken );
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
-		next unless $f->attr( 'name' ) eq 'editform';
+		next unless defined $f->attr( 'name' ) and $f->attr( 'name' ) eq 'editform';
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 		$Edittime  = $f->value( 'wpEdittime'  ) if defined $f->find_input( 'wpEdittime' );
 		$minor     = $f->value( 'wpMinoredit' ) if defined $f->find_input( 'wpMinoredit' ) and not defined $minor;
