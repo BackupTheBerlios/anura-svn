@@ -48,7 +48,7 @@ sub new {
 		cookie_jar => $self->{_cookie_jar},
 		max_redirect => 1
 	);
-	$self->{_logged_in}  = 0;
+	$self->{_logged_in} = 0;
 
 	return $self;
 }
@@ -123,12 +123,13 @@ sub put {
 	);
 	return 0 unless 200 == $res->code;
 
-	my ( $Edittime, $EditToken );
+	my ( $Edittime, $EditToken, $Starttime );
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
 		next unless defined $f->attr( 'name' ) and $f->attr( 'name' ) eq 'editform';
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
 		$Edittime  = $f->value( 'wpEdittime'  ) if defined $f->find_input( 'wpEdittime' );
+		$Starttime = $f->value( 'wpStarttime' ) if defined $f->find_input( 'wpStarttime' );
 		$minor     = $f->value( 'wpMinoredit' ) if defined $f->find_input( 'wpMinoredit' ) and not defined $minor;
 		$watch     = $f->value( 'wpWatchthis' ) if defined $f->find_input( 'wpWatchthis' ) and not defined $watch;
 	}
@@ -138,7 +139,8 @@ sub put {
 		wpTextbox1  => $contents,
 		wpSummary   => $summary,
 		wpEdittime  => $Edittime,
-		wpEditToken => $EditToken
+		wpEditToken => $EditToken,
+		wpStarttime => $Starttime,
 	);
 	$post{wpMinoredit} = 1 if $minor;
 	$post{wpWatchthis} = 1 if $watch;
@@ -165,7 +167,7 @@ sub downloadAllRevisions {
 }
 
 sub upload {
-	my ( $self, $file, $summary ) = @_;
+	my ( $self, $file, $summary, $license ) = @_;
 	return 0 unless defined $file;
 
 	$self->login unless $self->{_logged_in};
@@ -178,38 +180,13 @@ sub upload {
 			wpUploadFile => [ $file ],
 			wpUploadDescription => $summary,
 			wpUpload => 1,
-			wpUploadAffirm => 1
-			# TODO: wpUploadCopyStatus and wpUploadSource should be sent if $wgUseCopyrightUpload is true
+			wpUploadAffirm => 1,
+			wpIgnoreWarning => 1,
+			wpLicense => defined $license ? $license : ''
 		]
 	);
-	return 1 if 302 == $res;
-
-	if ($res->content =~ /<h4 class='error'>(.*)(?=<\/h4>)/) {
-		#(my $error = $1) =~ s/<[^>]*>//g; # TODO: Do something smart with this.
-	} elsif ($res->content =~ m#<ul class='warning'>(.*?)(?=</ul>)#s) {
-		#(my $error = $1) =~ s/<[^>]*>//g;
-		my $SessionKey;
-		my @forms = HTML::Form->parse( $res );
-		for my $f ( @forms ) {
-			next unless $f->attr( 'id' ) eq 'uploadwarning';
-			$SessionKey = $f->value( 'wpSessionKey' ) if defined $f->find_input( 'wpSessionKey' );
-		}
-		return 0 unless defined $SessionKey;
-
-		my $affirm = $self->{_ua}->post(
-			$self->{_wiki} . '?title=Special:Upload&action=submit',
-			$self->{_headers},
-			Content => [
-				wpUploadDescription => $summary,
-				wpUpload => 1,
-				wpUploadAffirm => 1,
-				wpIgnoreWarning => 1,
-				wpSessionKey => $SessionKey
-			]
-		);
-	}
-
-	return ( 302 == $res->code );
+	
+	return $res == 302;
 }
 
 sub protect {
@@ -343,7 +320,7 @@ sub delete {
 		]
 	);
 
-	return ( 200 == $res->code );
+	return 200 == $res->code;
 }
 
 sub move {
