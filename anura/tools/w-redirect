@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+use strict;
+
+require $ENV{HOME} . '/.anuratoolsconf';
+
+use if $conf::lib, lib => qw($conf::lib);
+use Net::Anura;
+
+my $bot = Net::Anura->new(
+	wiki => $conf::wiki
+);
+
+unless ( $bot->logged_in ) {
+	print "Logging in...";
+	$bot->login( $conf::user, $conf::pass );
+	print "done\n";
+}
+
+my ($froms, $to) = @ARGV;
+
+for my $from (split /\|/, $froms) {
+	print "Redirecting '$from' => '$to'...";
+	$bot->put( $from, "#tilvísun [[$to]]" , "Tilvísun: [[$from]] => [[$to]]", minor => 1 );
+	print "done\n";
+}

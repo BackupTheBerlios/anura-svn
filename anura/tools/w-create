@@ -1,0 +1,20 @@
+#!/usr/bin/env perl
+use strict;
+
+require $ENV{HOME} . '/.anuratoolsconf';
+
+use if $conf::lib, lib => qw($conf::lib);
+use Net::Anura;
+
+my $bot = Net::Anura->new(
+	wiki => $conf::wiki
+);
+
+unless ( $bot->logged_in ) {
+	$bot->login( $conf::user, $conf::pass );
+}
+
+my ($page, $content, $summary) = @ARGV;
+$summary = $content unless defined $summary;
+
+$bot->put( $page, $content, $summary );
