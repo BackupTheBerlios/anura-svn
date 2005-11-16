@@ -1,0 +1,6 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use Encode;
+
+print encode( 'iso-8859-1', decode( 'utf-8', $ARGV[0] ) );
