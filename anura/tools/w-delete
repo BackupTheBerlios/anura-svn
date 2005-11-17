@@ -2,17 +2,14 @@
 use strict;
 
 require $ENV{HOME} . '/.anuratools.conf';
-
-use if $conf::lib, lib => qw($conf::lib);
-use Net::Anura;
+unshift @INC, $conf::lib if $conf::lib;
+require Net::Anura;
 
 my $bot = Net::Anura->new(
 	wiki => $conf::wiki
 );
 
-unless ( $bot->logged_in ) {
-	$bot->login( $conf::user, $conf::pass );
-}
+$bot->login( $conf::user, $conf::pass ) unless $bot->logged_in;
 
 my ($pages, $reason) = @ARGV;
 $reason = '' unless defined $reason;
