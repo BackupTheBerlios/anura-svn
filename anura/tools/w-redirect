@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 
-require $ENV{HOME} . '/.anuratoolsconf';
+require $ENV{HOME} . '/.anuratools.conf';
 
 use if $conf::lib, lib => qw($conf::lib);
 use Net::Anura;
@@ -11,15 +11,13 @@ my $bot = Net::Anura->new(
 );
 
 unless ( $bot->logged_in ) {
-	print "Logging in...";
 	$bot->login( $conf::user, $conf::pass );
-	print "done\n";
 }
 
 my ($froms, $to) = @ARGV;
 
+my $ret;
 for my $from (split /\|/, $froms) {
-	print "Redirecting '$from' => '$to'...";
-	$bot->put( $from, "#tilvísun [[$to]]" , "Tilvísun: [[$from]] => [[$to]]", minor => 1 );
-	print "done\n";
+	$ret = $bot->put( $from, "#tilvísun [[$to]]" , "Tilvísun: [[$from]] => [[$to]]", minor => 1 ) while not $ret;
+	$ret = undef;
 }

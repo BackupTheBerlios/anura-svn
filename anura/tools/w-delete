@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 
-require $ENV{HOME} . '/.anuratoolsconf';
+require $ENV{HOME} . '/.anuratools.conf';
 
 use if $conf::lib, lib => qw($conf::lib);
 use Net::Anura;
@@ -11,15 +11,14 @@ my $bot = Net::Anura->new(
 );
 
 unless ( $bot->logged_in ) {
-	print "Logging in...";
 	$bot->login( $conf::user, $conf::pass );
-	print "done\n";
 }
 
 my ($pages, $reason) = @ARGV;
 $reason = '' unless defined $reason;
 
+my $ret;
 for my $page (split /\|/, $pages) {
-	print "Deleting '$page'...";
-	print $bot->delete( $page, $reason ) ? "done\n" : "fuck\n";
+	$ret = $bot->delete( $page, $reason ) while not $ret;
+	$ret = undef;
 }

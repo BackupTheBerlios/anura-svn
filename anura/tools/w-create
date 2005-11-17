@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 
-require $ENV{HOME} . '/.anuratoolsconf';
+require $ENV{HOME} . '/.anuratools.conf';
 
 use if $conf::lib, lib => qw($conf::lib);
 use Net::Anura;
@@ -17,4 +17,5 @@ unless ( $bot->logged_in ) {
 my ($page, $content, $summary) = @ARGV;
 $summary = $content unless defined $summary;
 
-$bot->put( $page, $content, $summary );
+my $ret;
+$ret = $bot->put( $page, $content, $summary ) while not $ret;
