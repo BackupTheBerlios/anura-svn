@@ -324,7 +324,7 @@ sub delete {
 }
 
 sub move {
-	my ( $self, $page, $newname, $moveTalkToo ) = @_;
+	my ( $self, $page, $newname, $summary, $moveTalkToo ) = @_;
 	return 0 unless defined $newname;
 
 	$self->login unless $self->{_logged_in};
@@ -351,6 +351,9 @@ sub move {
 		wpMove => 1,
 		wpEditToken => $EditToken
 	);
+	
+	$post{wpReason} = $summary if defined $summary;
+	
 	if ( defined( $moveTalkToo ) ) {
 		$post{wpMovetalk} = $moveTalkToo ? 1 : 0;
 	} elsif ( defined( $Movetalk ) ) {
