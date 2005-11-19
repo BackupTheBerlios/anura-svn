@@ -301,11 +301,12 @@ sub delete {
 	);
 	return 0 unless 200 == $res->code;
 
-	my $EditToken;
+	my ($EditToken, $wpReason);
 	my @forms = HTML::Form->parse( $res );
 	for my $f ( @forms ) {
 		next unless $f->attr( 'id' ) eq 'deleteconfirm';
 		$EditToken = $f->value( 'wpEditToken' ) if defined $f->find_input( 'wpEditToken' );
+		$wpReason = $f->value( 'wpReason' ) if defined $f->find_input( 'wpReason' );
 	}
 	return 0 unless defined $EditToken;
 
@@ -313,7 +314,7 @@ sub delete {
 		$self->{_wiki} . "?title=$page&action=delete",
 		$self->{_headers},
 		Content => [
-			wpReason => $reason,
+			wpReason => $reason ne '' ? $reason : $wpReason,
 			wpConfirm => 1, # Needed for REL1_4, no longer exists in REL1_5
 			wpConfirmB => 1,
 			wpEditToken => $EditToken
