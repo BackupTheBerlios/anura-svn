@@ -44,7 +44,7 @@ sub new {
 
 	$self->{_cookie_jar} = $CookieJars{ $self->{_cookiefile} };
 	$self->{_ua}         = LWP::UserAgent->new(
-		agent => "",
+		agent => "Anura bot",
 		cookie_jar => $self->{_cookie_jar},
 		max_redirect => 1
 	);
